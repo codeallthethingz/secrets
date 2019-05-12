@@ -1,3 +1,5 @@
-rpm-secrets
+secrets
 coverage.out
 .env
+secrets.json
+secrets.test.json

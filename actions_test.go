@@ -16,11 +16,12 @@ const testSecretsFile = "secrets.test.json"
 const testPassphrase = "testpassphrase"
 
 func TestRevokeAccess(t *testing.T) {
-	context := Setup(t, []string{"mynewservice", "secretname"})
+	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
 	Set(context)
-	AddAccess(context)
-	err := RevokeAccess(context)
+	accessContext := Setup(t, []string{"mynewservice", "secretname"})
+	AddAccess(accessContext)
+	err := RevokeAccess(accessContext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +34,7 @@ func TestRevokeAccess(t *testing.T) {
 }
 
 func TestAddAccess(t *testing.T) {
-	context := Setup(t, nil)
+	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
 	Set(context)
 	err := AddAccess(Setup(t, []string{"mynewservice", "secretname"}))
@@ -51,26 +52,28 @@ func TestAddAccess(t *testing.T) {
 }
 
 func TestServiceNameAlreadyExists(t *testing.T) {
-	context := Setup(t, []string{"mynewservice", "secretname"})
+	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
 	Set(context)
-	err := AddAccess(context)
+	accessContext := Setup(t, []string{"mynewservice", "secretname"})
+	err := AddAccess(accessContext)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = AddAccess(context)
+	err = AddAccess(accessContext)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "remove using revoke-access before adding", err.Error())
 }
 
 func TestRemove(t *testing.T) {
-	context := Setup(t, []string{"secretname"})
+	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
 	err := Set(context)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = Remove(context)
+	removeContext := Setup(t, []string{"secretname"})
+	err = Remove(removeContext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +86,7 @@ func TestRemove(t *testing.T) {
 }
 
 func TestBadPassword(t *testing.T) {
-	context := Setup(t, nil)
+	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
 	Set(context)
 	context.GlobalSet("passphrase", "nottherightpassword")
@@ -91,7 +94,7 @@ func TestBadPassword(t *testing.T) {
 }
 
 func TestChangePassphrase(t *testing.T) {
-	context := Setup(t, nil)
+	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
 	Set(context)
 	changedPassphraseContext := Setup(t, []string{"nottherightpassword"})
@@ -106,7 +109,7 @@ func TestChangePassphrase(t *testing.T) {
 }
 
 func TestSetSecret(t *testing.T) {
-	context := Setup(t, nil)
+	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
 	err := Set(context)
 	if err != nil {
@@ -140,7 +143,7 @@ func TestSetSecret(t *testing.T) {
 	require.Equal(t, "secretvalue", string(loadedSecretsFile.Secrets[0].Secret))
 }
 func TestSetWithAccess(t *testing.T) {
-	context := Setup(t, nil)
+	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
 	Set(context)
 	AddAccess(Setup(t, []string{"org", "secretname"}))
@@ -168,13 +171,8 @@ func Setup(t *testing.T, commandLine []string) *cli.Context {
 	// check and balance to remind you to add any flags that will be used in tests here
 	require.Equal(t, 2, len(allFlags), allFlags)
 	set := flag.NewFlagSet("", 0)
-	set.String("name", "secretname", "")
-	set.String("secret", "secretvalue", "")
 	set.String("passphrase", testPassphrase, "")
-	set.String("new-passphrase", "", "")
 	set.String("secrets-file", testSecretsFile, "")
-	set.String("service-name", "", "")
-	set.String("secrets", "", "")
 	if commandLine != nil {
 		set.Parse(commandLine)
 	}

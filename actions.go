@@ -101,8 +101,6 @@ func AddAccess(c *cli.Context) error {
 	fmt.Printf(aurora.Green("added access to %s for %s\n").String(), aurora.Blue(serviceName), aurora.BrightBlue(secrets))
 	fmt.Println("Please use this token to access the secrets serice through the api")
 	fmt.Println(aurora.Yellow(generatedToken))
-	fmt.Println()
-	List(c)
 	return nil
 }
 
@@ -158,7 +156,7 @@ func Set(c *cli.Context) error {
 	secret := strings.TrimSpace(c.Args().Get(1))
 	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
 	if len(name) == 0 {
-		return cli.NewExitError("must specify name as first argument", 4)
+		return cli.NewExitError("must specify secret name as first argument", 4)
 	}
 	if len(secret) == 0 {
 		return cli.NewExitError("must specify secret as second argument", 5)

@@ -22,7 +22,7 @@ func CreateApp() *cli.App {
 	app.Version = "0.0.1"
 	app.Name = "secrets"
 	app.EnableBashCompletion = true
-	app.Usage = "secrets manager for rpm"
+	app.Usage = "json file-based secrets manager"
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
