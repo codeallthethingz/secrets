@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/codeallthethingz/secrets/model"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
 )
@@ -22,7 +23,7 @@ func TestRevokeAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	loadedSecretsFile, err := LoadOrCreateSecretsFile("secret.json", "testpassphrase")
+	loadedSecretsFile, err := model.LoadOrCreateSecretsFile("secret.json", "testpassphrase")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +41,7 @@ func TestAddAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	loadedSecretsFile, err := LoadOrCreateSecretsFile("secret.json", "testpassphrase")
+	loadedSecretsFile, err := model.LoadOrCreateSecretsFile("secret.json", "testpassphrase")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,9 +118,9 @@ func TestSetSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := json.Marshal(SecretsFile{
-		Secrets: []*Secret{
-			&Secret{
+	data, err := json.Marshal(model.SecretsFile{
+		Secrets: []*model.Secret{
+			&model.Secret{
 				Name:   "secretname",
 				Secret: []byte("secretvalue"),
 			},
@@ -133,7 +134,7 @@ func TestSetSecret(t *testing.T) {
 	require.NotContains(t, string(secretContents), []byte("secretvalue"))
 	require.NotEqual(t, string(data), string(secretContents), "Seems like the secret wasn't encrypted")
 
-	loadedSecretsFile, err := LoadOrCreateSecretsFile("secret.json", "testpassphrase")
+	loadedSecretsFile, err := model.LoadOrCreateSecretsFile("secret.json", "testpassphrase")
 	if err != nil {
 		t.Fatal(err)
 	}

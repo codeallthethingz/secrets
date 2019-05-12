@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/codeallthethingz/secrets/model"
 	"github.com/logrusorgru/aurora"
 	"github.com/urfave/cli"
 )
@@ -23,7 +24,7 @@ func RevokeAccess(c *cli.Context) error {
 	}
 	file := c.GlobalString("secret-file")
 
-	secretsFile, err := LoadOrCreateSecretsFile(file, passphrase)
+	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
@@ -43,7 +44,7 @@ func RevokeAccess(c *cli.Context) error {
 		secret.Access = newAccess
 	}
 
-	newServices := []*Service{}
+	newServices := []*model.Service{}
 	for _, service := range secretsFile.Services {
 
 		if service.Name != serviceName {
@@ -75,7 +76,7 @@ func AddAccess(c *cli.Context) error {
 	}
 	file := c.GlobalString("secret-file")
 
-	secretsFile, err := LoadOrCreateSecretsFile(file, passphrase)
+	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
@@ -96,7 +97,7 @@ func AddAccess(c *cli.Context) error {
 		}
 		secretsFile.Secrets[i].Access = append(secretsFile.Secrets[i].Access, serviceName)
 	}
-	secretsFile.Services = append(secretsFile.Services, &Service{
+	secretsFile.Services = append(secretsFile.Services, &model.Service{
 		Name:   serviceName,
 		Secret: []byte(generatedToken),
 	})
@@ -124,7 +125,7 @@ func Passphrase(c *cli.Context) error {
 	}
 	file := c.GlobalString("secret-file")
 
-	secretsFile, err := LoadOrCreateSecretsFile(file, passphrase)
+	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
@@ -146,7 +147,7 @@ func Remove(c *cli.Context) error {
 	}
 	file := c.GlobalString("secret-file")
 
-	secretsFile, err := LoadOrCreateSecretsFile(file, passphrase)
+	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
@@ -178,13 +179,13 @@ func Set(c *cli.Context) error {
 	}
 
 	file := c.GlobalString("secret-file")
-	secretsFile, err := LoadOrCreateSecretsFile(file, passphrase)
+	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
 
 	i := secretsFile.IndexOfSecret(name)
-	newSecret := Secret{
+	newSecret := model.Secret{
 		Name:   name,
 		Secret: []byte(secret),
 	}
@@ -218,7 +219,7 @@ func List(c *cli.Context) error {
 		fmt.Println(aurora.White("empty"))
 		return nil
 	}
-	secretsFile, err := LoadOrCreateSecretsFile(file, passphrase)
+	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
