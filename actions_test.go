@@ -12,36 +12,37 @@ import (
 	"github.com/urfave/cli"
 )
 
+const testSecretsFile = "secrets.test.json"
+const testPassphrase = "testpassphrase"
+
 func TestRevokeAccess(t *testing.T) {
-	context := Setup(t)
-	defer Teardown(context)
+	context := Setup(t, []string{"mynewservice", "secretname"})
+	defer Teardown()
 	Set(context)
-	context.Set("service-name", "mynewservice")
-	context.Set("secrets", "secretname")
 	AddAccess(context)
 	err := RevokeAccess(context)
 	if err != nil {
 		t.Fatal(err)
 	}
-	loadedSecretsFile, err := model.LoadOrCreateSecretsFile("secret.json", "testpassphrase")
+	loadedSecretsFile, err := model.LoadOrCreateSecretsFile(testSecretsFile, testPassphrase)
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.Equal(t, 0, len(loadedSecretsFile.Services))
 	require.Equal(t, 0, len(loadedSecretsFile.Secrets[0].Access))
 }
+
 func TestAddAccess(t *testing.T) {
-	context := Setup(t)
-	defer Teardown(context)
+	context := Setup(t, nil)
+	defer Teardown()
 	Set(context)
-	context.Set("service-name", "mynewservice")
-	context.Set("secrets", "secretname")
-	err := AddAccess(context)
+	err := AddAccess(Setup(t, []string{"mynewservice", "secretname"}))
+
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	loadedSecretsFile, err := model.LoadOrCreateSecretsFile("secret.json", "testpassphrase")
+	loadedSecretsFile, err := model.LoadOrCreateSecretsFile(testSecretsFile, testPassphrase)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,23 +51,21 @@ func TestAddAccess(t *testing.T) {
 }
 
 func TestServiceNameAlreadyExists(t *testing.T) {
-	context := Setup(t)
-	defer Teardown(context)
+	context := Setup(t, []string{"mynewservice", "secretname"})
+	defer Teardown()
 	Set(context)
-	context.Set("service-name", "mynewservice")
-	context.Set("secrets", "secretname")
 	err := AddAccess(context)
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = AddAccess(context)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "remove using revoke-access before adding")
+	require.Contains(t, err.Error(), "remove using revoke-access before adding", err.Error())
 }
 
 func TestRemove(t *testing.T) {
-	context := Setup(t)
-	defer Teardown(context)
+	context := Setup(t, []string{"secretname"})
+	defer Teardown()
 	err := Set(context)
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +75,7 @@ func TestRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	file, err := ioutil.ReadFile("secret.json")
+	file, err := ioutil.ReadFile(testSecretsFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,37 +83,37 @@ func TestRemove(t *testing.T) {
 }
 
 func TestBadPassword(t *testing.T) {
-	context := Setup(t)
-	defer Teardown(context)
+	context := Setup(t, nil)
+	defer Teardown()
 	Set(context)
 	context.GlobalSet("passphrase", "nottherightpassword")
 	require.Contains(t, Set(context).Error(), "message authentication failed")
 }
 
 func TestChangePassphrase(t *testing.T) {
-	context := Setup(t)
-	defer Teardown(context)
+	context := Setup(t, nil)
+	defer Teardown()
 	Set(context)
-	context.GlobalSet("new-passphrase", "nottherightpassword")
-	err := Passphrase(context)
+	changedPassphraseContext := Setup(t, []string{"nottherightpassword"})
+	err := Passphrase(changedPassphraseContext)
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.Contains(t, Set(context).Error(), "message authentication failed")
-
-	context.Set("passphrase", "nottherightpassword")
-	require.Nil(t, Set(context))
+	context.GlobalSet("passphrase", "nottherightpassword")
+	err = Set(context)
+	require.Nil(t, err)
 }
 
 func TestSetSecret(t *testing.T) {
-	context := Setup(t)
-	defer Teardown(context)
+	context := Setup(t, nil)
+	defer Teardown()
 	err := Set(context)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	secretContents, err := ioutil.ReadFile("secret.json")
+	secretContents, err := ioutil.ReadFile(testSecretsFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,18 +133,28 @@ func TestSetSecret(t *testing.T) {
 	require.NotContains(t, string(secretContents), []byte("secretvalue"))
 	require.NotEqual(t, string(data), string(secretContents), "Seems like the secret wasn't encrypted")
 
-	loadedSecretsFile, err := model.LoadOrCreateSecretsFile("secret.json", "testpassphrase")
+	loadedSecretsFile, err := model.LoadOrCreateSecretsFile(testSecretsFile, testPassphrase)
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.Equal(t, "secretvalue", string(loadedSecretsFile.Secrets[0].Secret))
 }
+func TestSetWithAccess(t *testing.T) {
+	context := Setup(t, nil)
+	defer Teardown()
+	Set(context)
+	AddAccess(Setup(t, []string{"org", "secretname"}))
+	Set(context)
+	secretContents, _ := model.LoadOrCreateSecretsFile(testSecretsFile, testPassphrase)
 
-func Teardown(c *cli.Context) {
-	os.Remove(c.GlobalString("secret-file"))
+	require.Equal(t, 1, len(secretContents.Secrets[0].Access))
 }
 
-func Setup(t *testing.T) *cli.Context {
+func Teardown() {
+	os.Remove(testSecretsFile)
+}
+
+func Setup(t *testing.T, commandLine []string) *cli.Context {
 	app := CreateApp()
 	var allFlags []cli.Flag
 	for _, flag := range app.Flags {
@@ -157,19 +166,18 @@ func Setup(t *testing.T) *cli.Context {
 		}
 	}
 	// check and balance to remind you to add any flags that will be used in tests here
-	require.Equal(t, 9, len(allFlags), allFlags)
+	require.Equal(t, 2, len(allFlags), allFlags)
 	set := flag.NewFlagSet("", 0)
-	set.String("name", "", "")
-	set.String("secret", "", "")
-	set.String("passphrase", "", "")
+	set.String("name", "secretname", "")
+	set.String("secret", "secretvalue", "")
+	set.String("passphrase", testPassphrase, "")
 	set.String("new-passphrase", "", "")
-	set.String("secret-file", "", "")
+	set.String("secrets-file", testSecretsFile, "")
 	set.String("service-name", "", "")
 	set.String("secrets", "", "")
+	if commandLine != nil {
+		set.Parse(commandLine)
+	}
 	context := cli.NewContext(app, set, nil)
-	context.Set("passphrase", "testpassphrase")
-	context.Set("secret-file", "secret.json")
-	context.Set("name", "secretname")
-	context.Set("secret", "secretvalue")
 	return context
 }

@@ -11,6 +11,8 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+
+	"github.com/logrusorgru/aurora"
 )
 
 var checksumPhrase = []byte("checksumToEnsureThatThePassPhraseIsAlwaysTheSame")
@@ -51,8 +53,8 @@ func GenerateNewSecretsFile(file string, passphrase string) error {
 // LoadOrCreateSecretsFile loads secrets from disk and decrypts them
 // returns an error if something goes wrong in the loading process
 func LoadOrCreateSecretsFile(file string, passphrase string) (*SecretsFile, error) {
-	fmt.Println("loading: " + file)
 	if _, err := os.Stat(file); os.IsNotExist(err) {
+		fmt.Printf(aurora.Green("Creating: %s\n").String(), aurora.White(file))
 		err = GenerateNewSecretsFile(file, passphrase)
 		if err != nil {
 			return nil, err
@@ -138,7 +140,7 @@ func (s *SecretsFile) Save(file string, passphrase string) error {
 	if err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(s, "", "    ")
+	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}

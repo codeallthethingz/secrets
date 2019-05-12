@@ -14,26 +14,23 @@ import (
 
 // RevokeAccess remove this serice from accessing any secrets
 func RevokeAccess(c *cli.Context) error {
-	serviceName := strings.TrimSpace(c.String("service-name"))
+	serviceName := strings.TrimSpace(c.Args().First())
 	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
 	if len(serviceName) == 0 {
-		return cli.NewExitError("must specify --service-name", 5)
+		return cli.NewExitError("must specify service name as first argument", 5)
 	}
 	if len(passphrase) == 0 {
 		return cli.NewExitError("must specify --passphrase", 5)
 	}
-	file := c.GlobalString("secret-file")
-
+	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
-
 	if !secretsFile.HasService(serviceName) {
 		fmt.Println(aurora.Green("removed"))
 		return nil
 	}
-
 	for _, secret := range secretsFile.Secrets {
 		newAccess := []string{}
 		for _, access := range secret.Access {
@@ -43,7 +40,6 @@ func RevokeAccess(c *cli.Context) error {
 		}
 		secret.Access = newAccess
 	}
-
 	newServices := []*model.Service{}
 	for _, service := range secretsFile.Services {
 
@@ -62,25 +58,23 @@ func RevokeAccess(c *cli.Context) error {
 
 // AddAccess add an access token to a secret
 func AddAccess(c *cli.Context) error {
-	secrets := strings.TrimSpace(c.String("secrets"))
-	serviceName := strings.TrimSpace(c.String("service-name"))
+	secrets := strings.TrimSpace(c.Args().Get(1))
+	serviceName := strings.TrimSpace(c.Args().Get(0))
 	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
 	if len(secrets) == 0 {
-		return cli.NewExitError("must specify --secrets", 4)
+		return cli.NewExitError("must specify secrets as second argument", 4)
 	}
 	if len(serviceName) == 0 {
-		return cli.NewExitError("must specify --service-name", 5)
+		return cli.NewExitError("must specify service name as first argument", 5)
 	}
 	if len(passphrase) == 0 {
-		return cli.NewExitError("must specify --passphrase", 5)
+		return cli.NewExitError("must specify --passphrase as global parametr", 5)
 	}
-	file := c.GlobalString("secret-file")
-
+	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
-
 	if secretsFile.HasService(serviceName) {
 		return fmt.Errorf("service name %s already present, remove using revoke-access before adding", serviceName)
 	}
@@ -88,7 +82,6 @@ func AddAccess(c *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(err, 12)
 	}
-
 	arrayOfSecrets := strings.Split(secrets, ",")
 	for _, secretName := range arrayOfSecrets {
 		i := secretsFile.IndexOfSecret(secretName)
@@ -115,43 +108,39 @@ func AddAccess(c *cli.Context) error {
 
 // Passphrase change to a new passphrase
 func Passphrase(c *cli.Context) error {
-	newPassphrase := strings.TrimSpace(c.String("new-passphrase"))
+	newPassphrase := strings.TrimSpace(c.Args().First())
 	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
 	if len(newPassphrase) == 0 {
-		return cli.NewExitError("must specify --new-passphrase", 4)
+		return cli.NewExitError("must specify new passphrase as first argument", 4)
 	}
 	if len(passphrase) == 0 {
 		return cli.NewExitError("must specify --passphrase", 5)
 	}
-	file := c.GlobalString("secret-file")
-
+	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
-
 	secretsFile.Save(file, newPassphrase)
 	fmt.Println(aurora.Green("changed passphrase"))
 	return nil
 }
 
-// Remove a secret from the file secret.json
+// Remove a secret from the file secrets.json
 func Remove(c *cli.Context) error {
-	name := strings.TrimSpace(c.String("name"))
+	name := strings.TrimSpace(c.Args().First())
 	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
 	if len(name) == 0 {
-		return cli.NewExitError("must specify --name", 4)
+		return cli.NewExitError("must specify secret name as first argument", 4)
 	}
 	if len(passphrase) == 0 {
 		return cli.NewExitError("must specify --passphrase", 5)
 	}
-	file := c.GlobalString("secret-file")
-
+	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
-
 	i := secretsFile.IndexOfSecret(name)
 	if i == -1 {
 		fmt.Println(aurora.Red("not found"))
@@ -163,27 +152,25 @@ func Remove(c *cli.Context) error {
 	return nil
 }
 
-// Set add a secret to the file secret.json
+// Set add a secret to the file secrets.json
 func Set(c *cli.Context) error {
-	name := strings.TrimSpace(c.String("name"))
-	secret := strings.TrimSpace(c.String("secret"))
+	name := strings.TrimSpace(c.Args().Get(0))
+	secret := strings.TrimSpace(c.Args().Get(1))
 	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
 	if len(name) == 0 {
-		return cli.NewExitError("must specify --name", 4)
+		return cli.NewExitError("must specify name as first argument", 4)
 	}
 	if len(secret) == 0 {
-		return cli.NewExitError("must specify --secret", 5)
+		return cli.NewExitError("must specify secret as second argument", 5)
 	}
 	if len(passphrase) == 0 {
 		return cli.NewExitError("must specify --passphrase", 5)
 	}
-
-	file := c.GlobalString("secret-file")
+	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
-
 	i := secretsFile.IndexOfSecret(name)
 	newSecret := model.Secret{
 		Name:   name,
@@ -192,9 +179,10 @@ func Set(c *cli.Context) error {
 	if i == -1 {
 		secretsFile.Secrets = append(secretsFile.Secrets, &newSecret)
 	} else {
+		access := secretsFile.Secrets[i].Access
+		newSecret.Access = access
 		secretsFile.Secrets[i] = &newSecret
 	}
-
 	err = secretsFile.Save(file, passphrase)
 	if err != nil {
 		return cli.NewExitError(err, 8)
@@ -213,8 +201,7 @@ func List(c *cli.Context) error {
 	if len(passphrase) == 0 {
 		return cli.NewExitError("must specify --passphrase", 5)
 	}
-
-	file := c.GlobalString("secret-file")
+	file := c.GlobalString("secrets-file")
 	if _, err := os.Stat(file); os.IsNotExist(err) {
 		fmt.Println(aurora.White("empty"))
 		return nil
@@ -223,7 +210,6 @@ func List(c *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(err, 7)
 	}
-
 	if len(secretsFile.Secrets) == 0 {
 		fmt.Println(aurora.White("empty"))
 		return nil
@@ -242,7 +228,6 @@ func generateRandomBytes(n int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return b, nil
 }
 
