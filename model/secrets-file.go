@@ -18,22 +18,22 @@ var checksumPhrase = []byte("checksumToEnsureThatThePassPhraseIsAlwaysTheSame")
 // SecretsFile holder of secrets
 type SecretsFile struct {
 	// TODO change to camel case for json as this is used in an API now.
-	Secrets  []*Secret
-	Checksum []byte
-	Services []*Service
+	Secrets  []*Secret  `json:"secrets,omitempty"`
+	Checksum []byte     `json:"checksum,omitempty"`
+	Services []*Service `json:"services,omitempty"`
 }
 
 // Secret name/encrypted bytes/access list to this secret
 type Secret struct {
-	Name   string
-	Secret []byte
-	Access []string
+	Name   string   `json:"name,omitempty"`
+	Secret []byte   `json:"secret,omitempty"`
+	Access []string `json:"access,omitempty"`
 }
 
 // Service encrypted bytes for a service to access a secret
 type Service struct {
-	Name   string
-	Secret []byte
+	Name   string `json:"name,omitempty"`
+	Secret []byte `json:"secret,omitempty"`
 }
 
 // GenerateNewSecretsFile creates a new file with a checksum
