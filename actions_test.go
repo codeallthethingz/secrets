@@ -75,6 +75,7 @@ func TestGet(t *testing.T) {
 	err = Get(context)
 	require.Nil(t, err)
 }
+
 func TestRemove(t *testing.T) {
 	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
