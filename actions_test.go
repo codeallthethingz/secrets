@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/codeallthethingz/secrets/model"
+	"github.com/kami-zh/go-capturer"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
 )
@@ -15,6 +16,31 @@ import (
 const testSecretsFile = "secrets.test.json"
 const testPassphrase = "testpassphrase"
 
+func TestEdges(t *testing.T) {
+	context := Setup(t, nil)
+	context.GlobalSet("passphrase", "")
+	functions2 := []func(*cli.Context) error{
+		Set, AddAccess,
+	}
+	for _, function := range functions2 {
+		require.Error(t, function(context))
+		require.Error(t, Set(Setup(t, []string{})))
+		require.Error(t, Set(Setup(t, []string{"secretname"})))
+	}
+	functions1 := []func(*cli.Context) error{
+		Get, Remove, RevokeAccess, Passphrase,
+	}
+	for _, function := range functions1 {
+		require.Error(t, function(context))
+		require.Error(t, Set(Setup(t, []string{})))
+	}
+	functions0 := []func(*cli.Context) error{
+		List,
+	}
+	for _, function := range functions0 {
+		require.Error(t, function(context))
+	}
+}
 func TestRevokeAccess(t *testing.T) {
 	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()
@@ -74,6 +100,9 @@ func TestGet(t *testing.T) {
 	}
 	err = Get(context)
 	require.Nil(t, err)
+
+	out := capturer.CaptureStdout(func() { Get(context) })
+	require.Contains(t, out, "secretvalue")
 }
 
 func TestRemove(t *testing.T) {
@@ -94,6 +123,17 @@ func TestRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 	require.NotContains(t, string(file), "secretname")
+}
+
+func TestList(t *testing.T) {
+	context := Setup(t, []string{"secretname", "secretvalue"})
+	defer Teardown()
+	err := Set(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := capturer.CaptureStdout(func() { List(context) })
+	require.Contains(t, out, "secretname")
 }
 
 func TestBadPassword(t *testing.T) {

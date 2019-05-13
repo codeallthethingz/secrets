@@ -63,8 +63,8 @@ func CreateApp() *cli.App {
 		{
 			Name:      "add-access",
 			Usage:     "returns a new access token with access to specified secrets for a named service",
-			ArgsUsage: "`service name` `secret1,secret2,...`",
 			Action:    AddAccess,
+			ArgsUsage: "`service name` `secret1,secret2,...`",
 		},
 		{
 			Name:      "revoke-access",

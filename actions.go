@@ -14,14 +14,11 @@ import (
 
 // RevokeAccess remove this serice from accessing any secrets
 func RevokeAccess(c *cli.Context) error {
-	serviceName := strings.TrimSpace(c.Args().First())
-	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
-	if len(serviceName) == 0 {
-		return cli.NewExitError("must specify service name as first argument", 5)
+	serviceName, _, passphrase, err := check1or2Args(c, "service name", "")
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
-	if len(passphrase) == 0 {
-		return cli.NewExitError("must specify --passphrase", 5)
-	}
+
 	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
@@ -58,17 +55,10 @@ func RevokeAccess(c *cli.Context) error {
 
 // AddAccess add an access token to a secret
 func AddAccess(c *cli.Context) error {
-	secrets := strings.TrimSpace(c.Args().Get(1))
-	serviceName := strings.TrimSpace(c.Args().Get(0))
-	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
-	if len(secrets) == 0 {
-		return cli.NewExitError("must specify secrets as second argument", 4)
-	}
-	if len(serviceName) == 0 {
-		return cli.NewExitError("must specify service name as first argument", 5)
-	}
-	if len(passphrase) == 0 {
-		return cli.NewExitError("must specify --passphrase as global parametr", 5)
+
+	serviceName, secrets, passphrase, err := check1or2Args(c, "service name", "secrets")
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
 	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
@@ -106,13 +96,9 @@ func AddAccess(c *cli.Context) error {
 
 // Passphrase change to a new passphrase
 func Passphrase(c *cli.Context) error {
-	newPassphrase := strings.TrimSpace(c.Args().First())
-	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
-	if len(newPassphrase) == 0 {
-		return cli.NewExitError("must specify new passphrase as first argument", 4)
-	}
-	if len(passphrase) == 0 {
-		return cli.NewExitError("must specify --passphrase", 5)
+	newPassphrase, _, passphrase, err := check1or2Args(c, "new passphrase", "")
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
 	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
@@ -126,13 +112,9 @@ func Passphrase(c *cli.Context) error {
 
 // Remove a secret from the file secrets.json
 func Remove(c *cli.Context) error {
-	name := strings.TrimSpace(c.Args().First())
-	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
-	if len(name) == 0 {
-		return cli.NewExitError("must specify secret name as first argument", 4)
-	}
-	if len(passphrase) == 0 {
-		return cli.NewExitError("must specify --passphrase", 5)
+	name, _, passphrase, err := check1or2Args(c, "secret name", "")
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
 	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
@@ -150,20 +132,35 @@ func Remove(c *cli.Context) error {
 	return nil
 }
 
+func check1or2Args(c *cli.Context, arg1Name string, arg2Name string) (string, string, string, error) {
+	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
+	if len(passphrase) == 0 {
+		return "", "", "", fmt.Errorf("must specify --passphrase")
+	}
+	arg1, arg2 := "", ""
+	if arg1Name != "" {
+		arg1 = strings.TrimSpace(c.Args().Get(0))
+		if len(arg1) == 0 {
+			return "", "", "", fmt.Errorf("must specify %s as first argument", arg1Name)
+		}
+	}
+	if arg2Name != "" {
+		arg2 = strings.TrimSpace(c.Args().Get(1))
+		if len(arg2) == 0 {
+			return "", "", "", fmt.Errorf("must specify %s as second argument", arg2Name)
+		}
+	}
+
+	return arg1, arg2, passphrase, nil
+}
+
 // Set add a secret to the file secrets.json
 func Set(c *cli.Context) error {
-	name := strings.TrimSpace(c.Args().Get(0))
-	secret := strings.TrimSpace(c.Args().Get(1))
-	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
-	if len(name) == 0 {
-		return cli.NewExitError("must specify secret name as first argument", 4)
+	name, secret, passphrase, err := check1or2Args(c, "secret name", "secret value")
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
-	if len(secret) == 0 {
-		return cli.NewExitError("must specify secret as second argument", 5)
-	}
-	if len(passphrase) == 0 {
-		return cli.NewExitError("must specify --passphrase", 5)
-	}
+
 	file := c.GlobalString("secrets-file")
 	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
 	if err != nil {
@@ -195,9 +192,9 @@ func Set(c *cli.Context) error {
 
 // List all the secrets.
 func List(c *cli.Context) error {
-	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
-	if len(passphrase) == 0 {
-		return cli.NewExitError("must specify --passphrase", 5)
+	_, _, passphrase, err := check1or2Args(c, "", "")
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
 	file := c.GlobalString("secrets-file")
 	if _, err := os.Stat(file); os.IsNotExist(err) {
@@ -222,13 +219,9 @@ func List(c *cli.Context) error {
 
 // Get a secret value
 func Get(c *cli.Context) error {
-	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
-	name := strings.TrimSpace(c.Args().Get(0))
-	if len(name) == 0 {
-		return cli.NewExitError("must specify secret name as first argument", 1)
-	}
-	if len(passphrase) == 0 {
-		return cli.NewExitError("must specify --passphrase", 1)
+	name, _, passphrase, err := check1or2Args(c, "secret name", "")
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
 	file := c.GlobalString("secrets-file")
 	if _, err := os.Stat(file); os.IsNotExist(err) {
