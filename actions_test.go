@@ -65,6 +65,16 @@ func TestServiceNameAlreadyExists(t *testing.T) {
 	require.Contains(t, err.Error(), "remove using revoke-access before adding", err.Error())
 }
 
+func TestGet(t *testing.T) {
+	context := Setup(t, []string{"secretname", "secretvalue"})
+	defer Teardown()
+	err := Set(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = Get(context)
+	require.Nil(t, err)
+}
 func TestRemove(t *testing.T) {
 	context := Setup(t, []string{"secretname", "secretvalue"})
 	defer Teardown()

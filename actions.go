@@ -220,6 +220,36 @@ func List(c *cli.Context) error {
 	return nil
 }
 
+// Get a secret value
+func Get(c *cli.Context) error {
+	passphrase := strings.TrimSpace(c.GlobalString("passphrase"))
+	name := strings.TrimSpace(c.Args().Get(0))
+	if len(name) == 0 {
+		return cli.NewExitError("must specify secret name as first argument", 1)
+	}
+	if len(passphrase) == 0 {
+		return cli.NewExitError("must specify --passphrase", 1)
+	}
+	file := c.GlobalString("secrets-file")
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		return cli.NewExitError("no secrets file", 1)
+	}
+	secretsFile, err := model.LoadOrCreateSecretsFile(file, passphrase)
+	if err != nil {
+		return cli.NewExitError(err, 1)
+	}
+	if len(secretsFile.Secrets) == 0 {
+		return cli.NewExitError("no Secrets", 1)
+	}
+	for _, secret := range secretsFile.Secrets {
+		if secret.Name == name {
+			fmt.Println(string(secret.Secret))
+			return nil
+		}
+	}
+	return cli.NewExitError("colud not find secret: "+name, 1)
+}
+
 func generateRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)

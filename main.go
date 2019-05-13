@@ -37,6 +37,30 @@ func CreateApp() *cli.App {
 	}
 	app.Commands = []cli.Command{
 		{
+			Name:      "set",
+			Usage:     "set a secret to the credential file, overwrites if exists but keeps access list",
+			Action:    Set,
+			ArgsUsage: "`secret name` `secret value`",
+		},
+		{
+			Name:      "get",
+			Usage:     "get a secret out of the secrets file",
+			Action:    Get,
+			ArgsUsage: "`secret name`",
+		},
+		{
+			Name:      "list",
+			Usage:     "list all the secrets in the credentials file",
+			Action:    List,
+			ArgsUsage: " ",
+		},
+		{
+			Name:      "remove",
+			Usage:     "remove a secret from the credential file",
+			Action:    Remove,
+			ArgsUsage: "`secret name`",
+		},
+		{
 			Name:      "add-access",
 			Usage:     "returns a new access token with access to specified secrets for a named service",
 			ArgsUsage: "`service name` `secret1,secret2,...`",
@@ -53,22 +77,6 @@ func CreateApp() *cli.App {
 			Usage:     "change the passphrase to a new passphrase",
 			Action:    Passphrase,
 			ArgsUsage: "`new passphrase`",
-		},
-		{
-			Name:      "remove",
-			Usage:     "remove a secret from the credential file",
-			Action:    Remove,
-			ArgsUsage: "`secret name`",
-		}, {
-			Name:      "set",
-			Usage:     "set a secret to the credential file, overwrites if exists but keeps access list",
-			Action:    Set,
-			ArgsUsage: "`secret name` `secret value`",
-		}, {
-			Name:      "list",
-			Usage:     "list all the secrets in the credentials file",
-			Action:    List,
-			ArgsUsage: " ",
 		},
 	}
 	app.Action = func(c *cli.Context) error {
