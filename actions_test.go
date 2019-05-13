@@ -173,7 +173,7 @@ func TestSetSecret(t *testing.T) {
 	}
 	data, err := json.Marshal(model.SecretsFile{
 		Secrets: []*model.Secret{
-			&model.Secret{
+			{
 				Name:   "secretname",
 				Secret: []byte("secretvalue"),
 			},
