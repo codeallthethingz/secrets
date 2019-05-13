@@ -1,7 +1,7 @@
 # Secrets
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/codeallthethingz/secrets)](https://goreportcard.com/report/github.com/codeallthethingz/secrets)
-
+[![codecov](https://codecov.io/gh/codeallthethingz/secrets/branch/master/graph/badge.svg)](https://codecov.io/gh/codeallthethingz/secrets)
 
 Command line utility to generate and manage a JSON file that contains encrypted secrets and access lists to those secrets.
 
