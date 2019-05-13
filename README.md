@@ -1,5 +1,8 @@
 # Secrets
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/codeallthethingz/secrets)](https://goreportcard.com/report/github.com/codeallthethingz/secrets)
+
+
 Command line utility to generate and manage a JSON file that contains encrypted secrets and access lists to those secrets.
 
 Uses AES with a passphrase to encrypt secrets.
