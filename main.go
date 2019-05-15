@@ -62,14 +62,20 @@ func CreateApp() *cli.App {
 		},
 		{
 			Name:      "add-access",
-			Usage:     "returns a new access token with access to specified secrets for a named service",
+			Usage:     "returns a new access token (or existing access token) with access to a comma separated secrets for a named service",
 			Action:    AddAccess,
 			ArgsUsage: "`service name` `secret1,secret2,...`",
 		},
 		{
-			Name:      "revoke-access",
-			Usage:     "create a new access token with access to specified secrets",
-			Action:    RevokeAccess,
+			Name:      "remove-access",
+			Usage:     "remove access to the a comma separated list of secrets",
+			Action:    RemoveAccess,
+			ArgsUsage: "`service name` `secret1,secret2,...`",
+		},
+		{
+			Name:      "revoke-service",
+			Usage:     "remove all access for a service and delete the service access token",
+			Action:    RevokeService,
 			ArgsUsage: "`service name`",
 		},
 		{

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -16,19 +17,30 @@ import (
 const testSecretsFile = "secrets.test.json"
 const testPassphrase = "testpassphrase"
 
+func TestMissingFileOrSecret(t *testing.T) {
+	defer Teardown()
+	context := Setup(t, []string{"secretnameMissing", "secretvalue"})
+	Set(context)
+	Remove(context)
+	require.Contains(t, capturer.CaptureStdout(func() { Remove(context) }), "not found")
+	require.Contains(t, capturer.CaptureStdout(func() { RevokeService(context) }), "revoked")
+	require.Error(t, Get(context))
+}
+
 func TestEdges(t *testing.T) {
 	context := Setup(t, nil)
 	context.GlobalSet("passphrase", "")
 	functions2 := []func(*cli.Context) error{
-		Set, AddAccess,
+		Set, AddAccess, RemoveAccess,
 	}
 	for _, function := range functions2 {
 		require.Error(t, function(context))
 		require.Error(t, Set(Setup(t, []string{})))
 		require.Error(t, Set(Setup(t, []string{"secretname"})))
+		require.Error(t, Set(Setup(t, []string{"--secrets-file", " ", "secretname", "secret value"})))
 	}
 	functions1 := []func(*cli.Context) error{
-		Get, Remove, RevokeAccess, Passphrase,
+		Get, Remove, RevokeService, Passphrase,
 	}
 	for _, function := range functions1 {
 		require.Error(t, function(context))
@@ -41,13 +53,44 @@ func TestEdges(t *testing.T) {
 		require.Error(t, function(context))
 	}
 }
-func TestRevokeAccess(t *testing.T) {
-	context := Setup(t, []string{"secretname", "secretvalue"})
+func TestRemoveAccess(t *testing.T) {
 	defer Teardown()
-	Set(context)
-	accessContext := Setup(t, []string{"mynewservice", "secretname"})
-	AddAccess(accessContext)
-	err := RevokeAccess(accessContext)
+	Set(Setup(t, []string{"secretname", "secretvalue"}))
+	Set(Setup(t, []string{"secretname2", "secretvalue"}))
+	loadedSecretsFile, _ := model.LoadOrCreateSecretsFile(testSecretsFile, testPassphrase)
+	require.Equal(t, 2, len(loadedSecretsFile.Secrets))
+	AddAccess(Setup(t, []string{"mynewservice", "secretname, secretname2"}))
+	AddAccess(Setup(t, []string{"mynewservice2", "secretname, secretname2"}))
+	err := RemoveAccess(Setup(t, []string{"mynewservice", "secretname2"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	loadedSecretsFile, err = model.LoadOrCreateSecretsFile(testSecretsFile, testPassphrase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, 2, len(loadedSecretsFile.Services))
+	require.Equal(t, 2, len(loadedSecretsFile.Secrets[0].Access))
+	require.Equal(t, "mynewservice", loadedSecretsFile.Secrets[0].Access[0])
+	require.Equal(t, "mynewservice2", loadedSecretsFile.Secrets[0].Access[1])
+	require.Equal(t, 1, len(loadedSecretsFile.Secrets[1].Access))
+	require.Equal(t, "mynewservice2", loadedSecretsFile.Secrets[1].Access[0])
+}
+func TestRemoveAccessEdges(t *testing.T) {
+	defer Teardown()
+	Set(Setup(t, []string{"secretname", "secretvalue"}))
+	removeContext := Setup(t, []string{"mynewservice", "secretname2"})
+	out := capturer.CaptureStdout(func() { RemoveAccess(removeContext) })
+	require.Contains(t, out, "removed")
+
+}
+func TestRevokeAccess(t *testing.T) {
+	defer Teardown()
+	Set(Setup(t, []string{"secretname", "secretvalue"}))
+	Set(Setup(t, []string{"secretname2", "secretvalue"}))
+	AddAccess(Setup(t, []string{"mynewservice", "secretname, secretname2"}))
+	AddAccess(Setup(t, []string{"mynewservice2", "secretname"}))
+	err := RevokeService(Setup(t, []string{"mynewservice"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,8 +98,11 @@ func TestRevokeAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Equal(t, 0, len(loadedSecretsFile.Services))
-	require.Equal(t, 0, len(loadedSecretsFile.Secrets[0].Access))
+	require.Equal(t, 1, len(loadedSecretsFile.Services))
+	require.Equal(t, 2, len(loadedSecretsFile.Secrets))
+	require.Equal(t, 1, len(loadedSecretsFile.Secrets[0].Access))
+	require.Equal(t, "mynewservice2", loadedSecretsFile.Secrets[0].Access[0])
+	require.Equal(t, 0, len(loadedSecretsFile.Secrets[1].Access))
 }
 
 func TestAddAccess(t *testing.T) {
@@ -76,23 +122,44 @@ func TestAddAccess(t *testing.T) {
 	require.Equal(t, "mynewservice", loadedSecretsFile.Secrets[0].Access[0])
 	require.Equal(t, 100, len(string(loadedSecretsFile.Services[0].Secret)))
 }
+func TestAddAccessMissingSecret(t *testing.T) {
+	err := AddAccess(Setup(t, []string{"mynewservice", "secretname"}))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not find secret named: secretname")
+}
 
-func TestServiceNameAlreadyExists(t *testing.T) {
-	context := Setup(t, []string{"secretname", "secretvalue"})
+func TestListNoFile(t *testing.T) {
+	out := capturer.CaptureStdout(func() { List(Setup(t, []string{"secretname", "secretvalue"})) })
+	require.Contains(t, out, "empty")
+}
+func TestListNoSecrets(t *testing.T) {
+	Set(Setup(t, []string{"secretname", "secretvalue"}))
+	err := Remove(Setup(t, []string{"secretname", "secretvalue"}))
+	if err != nil {
+		t.Error(err)
+	}
+	out := capturer.CaptureStdout(func() { List(Setup(t, []string{"secretname", "secretvalue"})) })
+	require.Contains(t, out, "empty")
+}
+
+func TestAddAccessTwice(t *testing.T) {
 	defer Teardown()
-	Set(context)
-	accessContext := Setup(t, []string{"mynewservice", "secretname"})
-	err := AddAccess(accessContext)
+	Set(Setup(t, []string{"secretname", "secretvalue"}))
+	AddAccess(Setup(t, []string{"mynewservice", "secretname"}))
+	AddAccess(Setup(t, []string{"mynewservice", "secretname"}))
+	loadedSecretsFile, err := model.LoadOrCreateSecretsFile(testSecretsFile, testPassphrase)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = AddAccess(accessContext)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "remove using revoke-access before adding", err.Error())
+	json, _ := json.Marshal(loadedSecretsFile)
+	fmt.Println(string(json))
+	require.Equal(t, 1, len(loadedSecretsFile.Services))
+	require.Equal(t, 1, len(loadedSecretsFile.Secrets[0].Access))
 }
 
 func TestGet(t *testing.T) {
 	context := Setup(t, []string{"secretname", "secretvalue"})
+	missingContext := Setup(t, []string{"secretname2", "secretvalue"})
 	defer Teardown()
 	err := Set(context)
 	if err != nil {
@@ -103,6 +170,7 @@ func TestGet(t *testing.T) {
 
 	out := capturer.CaptureStdout(func() { Get(context) })
 	require.Contains(t, out, "secretvalue")
+	require.Error(t, Get(missingContext))
 }
 
 func TestRemove(t *testing.T) {

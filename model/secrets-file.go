@@ -23,6 +23,7 @@ type SecretsFile struct {
 	Secrets  []*Secret  `json:"secrets,omitempty"`
 	Checksum []byte     `json:"checksum,omitempty"`
 	Services []*Service `json:"services,omitempty"`
+	filename string
 }
 
 // Secret name/encrypted bytes/access list to this secret
@@ -42,9 +43,9 @@ type Service struct {
 func GenerateNewSecretsFile(file string, passphrase string) error {
 	secretsFile := SecretsFile{
 		Checksum: checksumPhrase,
+		filename: file,
 	}
-	err := secretsFile.Save(file, passphrase)
-	if err != nil {
+	if err := secretsFile.Save(passphrase); err != nil {
 		return err
 	}
 	return nil
@@ -84,6 +85,7 @@ func (s *SecretsFile) load(file string, passphrase string) error {
 	if string(s.Checksum) != string(checksumPhrase) {
 		return fmt.Errorf("incorrect passphrase")
 	}
+	s.filename = file
 	return nil
 }
 
@@ -135,7 +137,7 @@ func (s *SecretsFile) decrypt(passphrase string) error {
 }
 
 // Save save this secrets file to disk, encrypted using the passphrase
-func (s *SecretsFile) Save(file string, passphrase string) error {
+func (s *SecretsFile) Save(passphrase string) error {
 	err := s.processSecrets(passphrase, encryptValue)
 	if err != nil {
 		return err
@@ -144,7 +146,7 @@ func (s *SecretsFile) Save(file string, passphrase string) error {
 	if err != nil {
 		return err
 	}
-	ioutil.WriteFile(file, data, 0644)
+	ioutil.WriteFile(s.filename, data, 0644)
 	err = s.decrypt(passphrase)
 	if err != nil {
 		return err
@@ -153,13 +155,13 @@ func (s *SecretsFile) Save(file string, passphrase string) error {
 }
 
 // HasService returns true if the service name has access to any secret
-func (s *SecretsFile) HasService(name string) bool {
+func (s *SecretsFile) HasService(name string) (*Service, bool) {
 	for _, service := range s.Services {
 		if service.Name == name {
-			return true
+			return service, true
 		}
 	}
-	return false
+	return nil, false
 }
 
 // IndexOfSecret find the indef of a secret in the array that matches name
