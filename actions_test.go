@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/codeallthethingz/secrets/model"
@@ -40,7 +41,7 @@ func TestEdges(t *testing.T) {
 		require.Error(t, Set(Setup(t, []string{"--secrets-file", " ", "secretname", "secret value"})))
 	}
 	functions1 := []func(*cli.Context) error{
-		Get, Remove, RevokeService, Passphrase,
+		Get, Remove, RevokeService, Passphrase, GetAccessToken,
 	}
 	for _, function := range functions1 {
 		require.Error(t, function(context))
@@ -82,7 +83,14 @@ func TestRemoveAccessEdges(t *testing.T) {
 	removeContext := Setup(t, []string{"mynewservice", "secretname2"})
 	out := capturer.CaptureStdout(func() { RemoveAccess(removeContext) })
 	require.Contains(t, out, "removed")
-
+}
+func TestGetAccessToken(t *testing.T) {
+	defer Teardown()
+	Set(Setup(t, []string{"secretname", "secretvalue"}))
+	generateAccessMessage := capturer.CaptureStdout(func() { AddAccess(Setup(t, []string{"myservice", "secretname"})) })
+	accessMessage := capturer.CaptureStdout(func() { GetAccessToken(Setup(t, []string{"myservice", "secretname"})) })
+	require.NotEmpty(t, accessMessage)
+	require.Contains(t, generateAccessMessage, strings.TrimSpace(accessMessage))
 }
 func TestRevokeAccess(t *testing.T) {
 	defer Teardown()

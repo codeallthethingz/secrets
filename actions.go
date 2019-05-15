@@ -243,6 +243,23 @@ func Get(c *cli.Context) error {
 	return cli.NewExitError("colud not find secret: "+name, 1)
 }
 
+// GetAccessToken the token for a specified service
+func GetAccessToken(c *cli.Context) error {
+	serviceName, _, _, secretsFile, err := check1or2Args(c, "service name", "")
+	if err != nil {
+		return cli.NewExitError(err, 1)
+	}
+
+	if len(secretsFile.Secrets) == 0 {
+		return cli.NewExitError("no Secrets", 1)
+	}
+	if access, ok := secretsFile.HasService(serviceName); ok {
+		fmt.Println(string(access.Secret))
+		return nil
+	}
+	return cli.NewExitError("colud not find service: "+serviceName, 1)
+}
+
 func generateRandomHexBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)

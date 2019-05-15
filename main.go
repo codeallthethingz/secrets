@@ -67,6 +67,12 @@ func CreateApp() *cli.App {
 			ArgsUsage: "`service name` `secret1,secret2,...`",
 		},
 		{
+			Name:      "get-access-token",
+			Usage:     "get access token for a service",
+			Action:    GetAccessToken,
+			ArgsUsage: "`service name`",
+		},
+		{
 			Name:      "remove-access",
 			Usage:     "remove access to the a comma separated list of secrets",
 			Action:    RemoveAccess,
